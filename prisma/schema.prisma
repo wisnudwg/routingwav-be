@@ -1,0 +1,137 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserType {
+  ROOT
+  IAM
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ProfileKind {
+  TALENT
+  CLIENT
+}
+
+enum TokenPurpose {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+model Account {
+  id        String   @id @default(uuid()) @db.Uuid
+  alias     String   @unique
+  phone     String?
+  country   String?  @db.Char(2)
+  address   String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  users    User[]
+  profiles Profile[]
+
+  @@map("accounts")
+}
+
+/// Owner (ROOT) and team members (IAM) share a table; CHECK constraints in the migration enforce the shapes.
+model User {
+  id                 String     @id @default(uuid()) @db.Uuid
+  type               UserType
+  /// Null only for a ROOT user who signed up with Google and hasn't completed their profile yet
+  accountId          String?    @db.Uuid
+  account            Account?   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  email              String?    @unique
+  emailVerifiedAt    DateTime?  @db.Timestamptz(3)
+  username           String?
+  name               String?
+  passwordHash       String?
+  googleSub          String?    @unique
+  status             UserStatus @default(ACTIVE)
+  mustChangePassword Boolean    @default(false)
+  permissions        String[]   @default([])
+  failedLoginCount   Int        @default(0)
+  lockedUntil        DateTime?  @db.Timestamptz(3)
+  lastSignInAt       DateTime?  @db.Timestamptz(3)
+  termsAcceptedAt    DateTime?  @db.Timestamptz(3)
+  termsVersion       String?
+  createdAt          DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime   @updatedAt @db.Timestamptz(3)
+
+  sessions Session[]
+  tokens   AuthToken[]
+
+  @@unique([accountId, username])
+  @@index([accountId])
+  @@map("users")
+}
+
+model Profile {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountId   String      @db.Uuid
+  account     Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  kind        ProfileKind
+  roles       String[]
+  otherRole   String?
+  instruments String?
+  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@unique([accountId, kind])
+  @@map("profiles")
+}
+
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 of the cookie value. The raw token is never stored.
+  tokenHash  String   @unique
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt  DateTime @db.Timestamptz(3)
+  ip         String?
+  userAgent  String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model AuthToken {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @db.Uuid
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   TokenPurpose
+  /// SHA-256 of the emailed token
+  tokenHash String       @unique
+  expiresAt DateTime     @db.Timestamptz(3)
+  usedAt    DateTime?    @db.Timestamptz(3)
+  createdAt DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, purpose])
+  @@map("auth_tokens")
+}
+
+/// Append-only (a trigger in the migration blocks UPDATE/DELETE). No FKs on purpose: logs must outlive accounts.
+model AuditEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  at         DateTime @default(now()) @db.Timestamptz(3)
+  accountId  String?  @db.Uuid
+  actorId    String?  @db.Uuid
+  actorLabel String
+  action     String
+  detail     String?
+  ip         String?
+
+  @@index([accountId, at])
+  @@map("audit_events")
+}

@@ -11,7 +11,7 @@
     "db:migrate": "prisma migrate dev",
     "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "seed:dev": "pnpm build && node dist/scripts/seed-dev.js",
+    "seed:dev": "npm run build && node dist/scripts/seed-dev.js",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",

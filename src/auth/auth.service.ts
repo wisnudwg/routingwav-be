@@ -25,7 +25,7 @@ import { GoogleAuthService } from './google-auth.service'
 import { PasswordService } from './password.service'
 import { SessionService } from './session.service'
 import { toSessionView } from './session.view'
-import { TokenService } from '../tokens/tokens.service'
+import { TokenService } from '../tokens/token.service'
 
 const VERIFY_TTL_MS = 24 * 3_600_000
 const RESET_TTL_MS = 60 * 60_000

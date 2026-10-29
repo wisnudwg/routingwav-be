@@ -15,7 +15,7 @@ import { maskEmail, memberEmailVerifyMail } from '../mail/templates'
 import { limitToProfiles, normalizePermissions } from '../permissions/catalog'
 import { profileKindsOf } from '../permissions/access'
 import { PrismaService } from '../prisma/prisma.service'
-import { TokenService } from '../tokens/tokens.service'
+import { TokenService } from '../tokens/token.service'
 import { toMemberView } from './team.mapper'
 import type { CreateMemberInput, UpdateMemberInput } from './team.schemas'
 

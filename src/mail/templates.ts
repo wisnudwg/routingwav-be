@@ -34,3 +34,12 @@ export const passwordChangedMail = (p: { forgotUrl: string }): Mail => ({
     `Password akun Anda baru saja diubah dan semua sesi masuk telah diakhiri.\n\n` +
     `Jika bukan Anda yang melakukannya, segera atur ulang password di ${p.forgotUrl} dan hubungi dukungan kami.`,
 })
+
+export const memberEmailVerifyMail = (p: { account: string; username: string; link: string }): Mail => ({
+  subject: 'Verifikasi email notifikasi Routing.com',
+  text:
+    `Pemilik akun "${p.account}" menambahkan alamat email ini untuk notifikasi anggota tim "${p.username}".\n\n` +
+    `Buka tautan berikut untuk memverifikasi (berlaku 24 jam):\n\n${p.link}\n\n` +
+    `Email ini hanya dipakai untuk notifikasi, bukan untuk masuk atau mengatur ulang password. ` +
+    `Jika Anda tidak mengenali permintaan ini, abaikan email ini. Tidak ada notifikasi yang dikirim sebelum alamat ini diverifikasi.`,
+})

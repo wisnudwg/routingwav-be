@@ -2,12 +2,10 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { AuditService } from '../audit/audit.service'
 import { AppError, isUniqueViolation } from '../common/app-error'
-import { newToken, sha256 } from '../common/crypto'
 import { toE164 } from '../common/phone'
 import type { RequestCtx } from '../common/request'
 import { TERMS_VERSION } from '../common/rules/roles'
 import type { Env } from '../config/env'
-import type { TokenPurpose } from '../generated/prisma/client'
 import { MailService } from '../mail/mail.service'
 import {
   alreadyRegisteredMail,
@@ -27,6 +25,7 @@ import { GoogleAuthService } from './google-auth.service'
 import { PasswordService } from './password.service'
 import { SessionService } from './session.service'
 import { toSessionView } from './session.view'
+import { TokenService } from '../tokens/tokens.service'
 
 const VERIFY_TTL_MS = 24 * 3_600_000
 const RESET_TTL_MS = 60 * 60_000
@@ -52,6 +51,7 @@ export class AuthService {
     private readonly googleAuth: GoogleAuthService,
     private readonly mail: MailService,
     private readonly audit: AuditService,
+    private readonly tokens: TokenService,
     config: ConfigService<Env, true>,
   ) {
     this.platformUrl = config.get('PLATFORM_URL', { infer: true })
@@ -109,7 +109,7 @@ export class AuthService {
         return { user, account }
       })
 
-      const raw = await this.issueToken(user.id, 'VERIFY_EMAIL', VERIFY_TTL_MS)
+      const raw = await this.tokens.issue(user.id, 'VERIFY_EMAIL', VERIFY_TTL_MS)
       void this.mail.send(
         input.email,
         verifyEmailMail({
@@ -139,7 +139,7 @@ export class AuthService {
   /* -------------------------------------------------------------- email verify */
 
   async verifyEmail(raw: string, ctx: RequestCtx): Promise<void> {
-    const userId = await this.consumeToken(raw, 'VERIFY_EMAIL')
+    const { userId } = await this.tokens.consume(raw, 'VERIFY_EMAIL')
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: { emailVerifiedAt: new Date() },
@@ -161,9 +161,9 @@ export class AuthService {
   private async doResendVerification(email: string) {
     const user = await this.prisma.user.findUnique({ where: { email } })
     if (!user || user.emailVerifiedAt || !user.passwordHash) return
-    if (await this.recentToken(user.id, 'VERIFY_EMAIL')) return
+    if (await this.tokens.recent(user.id, 'VERIFY_EMAIL')) return
 
-    const raw = await this.issueToken(user.id, 'VERIFY_EMAIL', VERIFY_TTL_MS)
+    const raw = await this.tokens.issue(user.id, 'VERIFY_EMAIL', VERIFY_TTL_MS)
     await this.mail.send(
       email,
       verifyEmailMail({
@@ -212,6 +212,9 @@ export class AuthService {
     }
     if (user.status !== 'ACTIVE') {
       throw new AppError(403, 'ACCOUNT_DISABLED', 'Akun ini dinonaktifkan. Hubungi pemilik akun Anda.')
+    }
+    if (user.mustChangePassword && user.tempPasswordExpiresAt && user.tempPasswordExpiresAt.getTime() < Date.now()) {
+      throw new AppError(403, 'TEMP_PASSWORD_EXPIRED', 'Password sementara sudah kedaluwarsa. Minta pemilik akun membuat yang baru.')
     }
     return this.startSession(user, ctx, previous, 'password')
   }
@@ -265,9 +268,9 @@ export class AuthService {
   private async doForgotPassword(email: string, ctx: RequestCtx) {
     const user = await this.prisma.user.findUnique({ where: { email } })
     if (!user || user.type !== 'ROOT') return
-    if (await this.recentToken(user.id, 'RESET_PASSWORD')) return
+    if (await this.tokens.recent(user.id, 'RESET_PASSWORD')) return
 
-    const raw = await this.issueToken(user.id, 'RESET_PASSWORD', RESET_TTL_MS)
+    const raw = await this.tokens.issue(user.id, 'RESET_PASSWORD', RESET_TTL_MS)
     await this.mail.send(
       email,
       resetPasswordMail({ link: `${this.platformUrl}/auth/reset-password?token=${encodeURIComponent(raw)}` }),
@@ -282,7 +285,7 @@ export class AuthService {
   }
 
   async resetPassword(raw: string, newPassword: string, ctx: RequestCtx): Promise<void> {
-    const userId = await this.consumeToken(raw, 'RESET_PASSWORD')
+    const { userId } = await this.tokens.consume(raw, 'RESET_PASSWORD')
     const passwordHash = await this.passwords.hash(newPassword)
     const current = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } })
 
@@ -325,7 +328,7 @@ export class AuthService {
     const passwordHash = await this.passwords.hash(newPassword)
     const fresh = await this.prisma.user.update({
       where: { id: u.id },
-      data: { passwordHash, mustChangePassword: false },
+      data: { passwordHash, mustChangePassword: false, tempPasswordExpiresAt: null },
       include: userArgs.include,
     })
     await this.sessions.revokeAllForUser(u.id, auth.sessionId) // keep only this session
@@ -443,49 +446,5 @@ export class AuthService {
     })
   }
 
-  /** Only one live token per user and purpose */
-  private async issueToken(userId: string, purpose: TokenPurpose, ttlMs: number): Promise<string> {
-    await this.prisma.authToken.updateMany({
-      where: { userId, purpose, usedAt: null },
-      data: { usedAt: new Date() },
-    })
-    const raw = newToken()
-    await this.prisma.authToken.create({
-      data: { userId, purpose, tokenHash: sha256(raw), expiresAt: new Date(Date.now() + ttlMs) },
-    })
-    return raw
-  }
-
-  private async recentToken(userId: string, purpose: TokenPurpose): Promise<boolean> {
-    const last = await this.prisma.authToken.findFirst({
-      where: { userId, purpose },
-      orderBy: { createdAt: 'desc' },
-      select: { createdAt: true },
-    })
-    return !!last && Date.now() - last.createdAt.getTime() < RESEND_COOLDOWN_MS
-  }
-
-  /** Atomic single-use: two requests can't both consume the same token */
-  private async consumeToken(raw: string, purpose: TokenPurpose): Promise<string> {
-    const tokenHash = sha256(raw)
-    const now = new Date()
-
-    const claimed = await this.prisma.authToken.updateMany({
-      where: { tokenHash, purpose, usedAt: null, expiresAt: { gt: now } },
-      data: { usedAt: now },
-    })
-    if (claimed.count === 1) {
-      const t = await this.prisma.authToken.findUniqueOrThrow({ where: { tokenHash }, select: { userId: true } })
-      return t.userId
-    }
-
-    const t = await this.prisma.authToken.findUnique({
-      where: { tokenHash },
-      select: { purpose: true, usedAt: true, expiresAt: true },
-    })
-    if (t && t.purpose === purpose && !t.usedAt && t.expiresAt <= now) {
-      throw new AppError(400, 'TOKEN_EXPIRED', 'Tautan sudah kedaluwarsa.')
-    }
-    throw new AppError(400, 'TOKEN_INVALID', 'Tautan tidak valid atau sudah dipakai.')
-  }
+  
 }

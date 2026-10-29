@@ -1,4 +1,5 @@
 import type { AuthContext } from './auth.types'
+import { effectivePermissions } from '../permissions/access'
 
 export function toSessionView(a: AuthContext) {
   const u = a.user
@@ -21,7 +22,7 @@ export function toSessionView(a: AuthContext) {
     username: u.username as string,
     name: u.name ?? undefined,
     profiles,
-    permissions: u.permissions,
+    permissions: effectivePermissions(u),
     pending: a.pending === 'change-password' ? ('change-password' as const) : undefined,
   }
 }

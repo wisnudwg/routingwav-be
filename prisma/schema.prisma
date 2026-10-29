@@ -26,6 +26,7 @@ enum ProfileKind {
 enum TokenPurpose {
   VERIFY_EMAIL
   RESET_PASSWORD
+  VERIFY_NOTIFICATION_EMAIL
 }
 
 model Account {
@@ -62,7 +63,10 @@ model User {
   failedLoginCount   Int        @default(0)
   lockedUntil        DateTime?  @db.Timestamptz(3)
   lastSignInAt       DateTime?  @db.Timestamptz(3)
+  notificationEmail           String?
+  notificationEmailVerifiedAt DateTime? @db.Timestamptz(3)
   termsAcceptedAt    DateTime?  @db.Timestamptz(3)
+  tempPasswordExpiresAt       DateTime? @db.Timestamptz(3)
   termsVersion       String?
   createdAt          DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime   @updatedAt @db.Timestamptz(3)
@@ -111,6 +115,7 @@ model AuthToken {
   userId    String       @db.Uuid
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   purpose   TokenPurpose
+  target    String?
   /// SHA-256 of the emailed token
   tokenHash String       @unique
   expiresAt DateTime     @db.Timestamptz(3)

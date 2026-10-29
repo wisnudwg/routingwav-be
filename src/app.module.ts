@@ -10,7 +10,11 @@ import { SessionGuard } from './common/session.guard'
 import { validateEnv } from './config/env'
 import { HealthController } from './health.controller'
 import { MailModule } from './mail/mail.module'
+import { MetaController } from './meta/meta.controller'
+import { PermissionGuard } from './permissions/permission.guard'
 import { PrismaModule } from './prisma/prisma.module'
+import { TeamModule } from './team/team.module'
+import { TokensModule } from './tokens/tokens.module'
 
 @Module({
   imports: [
@@ -20,13 +24,17 @@ import { PrismaModule } from './prisma/prisma.module'
     PrismaModule,
     MailModule,
     AuditModule,
+    TokensModule,
     AuthModule,
+    TeamModule,
   ],
-  controllers: [HealthController, AccountsController],
+  controllers: [HealthController, AccountsController, MetaController],
   providers: [
+    // Order matters: rate limit → origin check → session → permission
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: OriginGuard },
     { provide: APP_GUARD, useClass: SessionGuard },
+    { provide: APP_GUARD, useClass: PermissionGuard },
   ],
 })
 export class AppModule {}

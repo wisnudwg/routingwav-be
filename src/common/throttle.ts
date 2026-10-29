@@ -1,0 +1,1 @@
+export const perMinute = (limit: number) => ({ default: { limit, ttl: 60_000 } })

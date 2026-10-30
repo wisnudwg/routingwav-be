@@ -38,7 +38,8 @@ async function bootstrap() {
   if (config.get('NODE_ENV', { infer: true }) !== 'production') {
     const doc = SwaggerModule.createDocument(
       app,
-      new DocumentBuilder().setTitle('Routing.com API').setVersion('1.0').addCookieAuth(SESSION_COOKIE).build(),
+      // new DocumentBuilder().setTitle('Routing.com API').setVersion('1.0').addCookieAuth(SESSION_COOKIE).build(),
+      new DocumentBuilder().setTitle('Routing.com API').setVersion('1.0').setOpenAPIVersion('3.1.0').addCookieAuth(SESSION_COOKIE).build(),
     )
     app.use('/openapi.json', (_req: Request, res: Response) => {
       res.json(doc)

@@ -15,6 +15,7 @@ import { PermissionGuard } from './permissions/permission.guard'
 import { PrismaModule } from './prisma/prisma.module'
 import { TeamModule } from './team/team.module'
 import { TokensModule } from './tokens/tokens.module'
+import { ProfilesModule } from './profiles/profiles.module'
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { TokensModule } from './tokens/tokens.module'
     TokensModule,
     AuthModule,
     TeamModule,
+    ProfilesModule,
   ],
   controllers: [HealthController, AccountsController, MetaController],
   providers: [

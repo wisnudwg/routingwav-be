@@ -1,5 +1,6 @@
-import type { AuthContext } from './auth.types'
+import { maskEmail } from '../mail/templates'
 import { effectivePermissions } from '../permissions/access'
+import type { AuthContext } from './auth.types'
 
 export function toSessionView(a: AuthContext) {
   const u = a.user
@@ -23,6 +24,12 @@ export function toSessionView(a: AuthContext) {
     name: u.name ?? undefined,
     profiles,
     permissions: effectivePermissions(u),
+    notificationEmail: u.notificationEmail
+      ? {
+          state: u.notificationEmailVerifiedAt ? ('verified' as const) : ('pending' as const),
+          masked: maskEmail(u.notificationEmail),
+        }
+      : { state: 'none' as const },
     pending: a.pending === 'change-password' ? ('change-password' as const) : undefined,
   }
 }

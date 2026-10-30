@@ -16,6 +16,7 @@ import { PrismaModule } from './prisma/prisma.module'
 import { TeamModule } from './team/team.module'
 import { TokensModule } from './tokens/tokens.module'
 import { ProfilesModule } from './profiles/profiles.module'
+import { AccountModule } from './account/account.module'
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ProfilesModule } from './profiles/profiles.module'
     AuthModule,
     TeamModule,
     ProfilesModule,
+    AccountModule,
   ],
   controllers: [HealthController, AccountsController, MetaController],
   providers: [

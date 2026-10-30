@@ -84,7 +84,7 @@ export class AuthService {
     try {
       const { user, account } = await this.prisma.$transaction(async (tx) => {
         const account = await tx.account.create({
-          data: { alias: input.accountAlias, phone, country: input.country, address: input.address },
+          data: { alias: input.accountAlias, phone, phoneCountry: input.phoneCountry, country: input.country, address: input.address },
         })
         const user = await tx.user.create({
           data: {
@@ -355,7 +355,7 @@ export class AuthService {
     try {
       await this.prisma.$transaction(async (tx) => {
         const account = await tx.account.create({
-          data: { alias: input.accountAlias, phone, country: input.country, address: input.address },
+          data: { alias: input.accountAlias, phone, phoneCountry: input.phoneCountry, country: input.country, address: input.address },
         })
         // Compare-and-set: only the first of two concurrent requests wins
         const claimed = await tx.user.updateMany({

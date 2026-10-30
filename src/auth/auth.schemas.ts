@@ -26,7 +26,7 @@ export const aliasField = z
   .regex(ALIAS_REGEX, '3–63 karakter: huruf kecil, angka, tanda hubung')
   .refine((v) => !RESERVED_ALIASES.has(v), 'ID akun ini tidak tersedia')
 
-const countryField = z
+export const countryField = z
   .string()
   .trim()
   .toUpperCase()

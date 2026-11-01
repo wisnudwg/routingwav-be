@@ -36,7 +36,7 @@ export const profileEnvelopeSchema = z.object({ profile: profileViewSchema })
 export const activityQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
   cursor: z.string().max(200).optional(),
-  category: z.enum(['all', 'auth', 'team', 'account']).default('all'),
+  category: z.enum(['all', 'auth', 'team', 'account', 'kyc']).default('all'),
 })
 export type ActivityQuery = z.infer<typeof activityQuerySchema>
 

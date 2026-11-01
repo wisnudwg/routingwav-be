@@ -4,10 +4,11 @@ import { AuthService } from './auth.service'
 import { GoogleAuthService } from './google-auth.service'
 import { PasswordService } from './password.service'
 import { SessionService } from './session.service'
+import { StepUpService } from './step-up-service'
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, SessionService, PasswordService, GoogleAuthService],
+  providers: [AuthService, SessionService, StepUpService, PasswordService, GoogleAuthService],
   exports: [SessionService, PasswordService],
 })
 export class AuthModule {}

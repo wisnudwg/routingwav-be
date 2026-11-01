@@ -17,6 +17,9 @@ import { TeamModule } from './team/team.module'
 import { TokensModule } from './tokens/tokens.module'
 import { ProfilesModule } from './profiles/profiles.module'
 import { AccountModule } from './account/account.module'
+import { CryptoModule } from './crypto/crypto.module'
+import { KycModule } from './kyc/kyc.module'
+import { StorageModule } from './storage/storage.module'
 
 @Module({
   imports: [
@@ -31,6 +34,9 @@ import { AccountModule } from './account/account.module'
     TeamModule,
     ProfilesModule,
     AccountModule,
+    CryptoModule,
+    KycModule,
+    StorageModule,
   ],
   controllers: [HealthController, AccountsController, MetaController],
   providers: [

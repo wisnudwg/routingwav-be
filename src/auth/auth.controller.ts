@@ -14,6 +14,7 @@ import {
   resetPasswordSchema,
   signInIamSchema,
   signInRootSchema,
+  stepUpSchema,
   verifyEmailSchema,
   type CompleteProfileInput,
   type RegisterInput,
@@ -24,6 +25,7 @@ import type { AuthContext } from './auth.types'
 import { AuthService } from './auth.service'
 import { SessionService } from './session.service'
 import { toSessionView } from './session.view'
+import { StepUpService } from './step-up-service'
 import type { z } from 'zod'
 
 const perMinute = (limit: number) => ({ default: { limit, ttl: 60_000 } })
@@ -37,6 +39,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly sessions: SessionService,
+    private readonly stepUp: StepUpService,
   ) {}
 
   @Public()
@@ -166,5 +169,16 @@ export class AuthController {
     @Req() req: Request,
   ) {
     return this.auth.completeProfile(auth, body, ctxOf(req))
+  }
+
+  @Throttle(perMinute(5))
+  @Post('step-up')
+  @HttpCode(200)
+  confirmStepUp(
+    @CurrentAuth() auth: AuthContext,
+    @Body(new ZodPipe(stepUpSchema)) body: z.infer<typeof stepUpSchema>,
+    @Req() req: Request,
+  ) {
+    return this.stepUp.confirm(auth, body.password, ctxOf(req))
   }
 }

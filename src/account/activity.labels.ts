@@ -10,6 +10,13 @@ const LABELS: Record<string, string> = {
   'account.profile_completed': 'Profil akun dilengkapi',
   'account.profile_added': 'Profil ditambahkan',
   'account.profile_updated': 'Data akun diperbarui',
+  'kyc.submitted': 'Data identitas diajukan',
+  'kyc.verified': 'Identitas terverifikasi',
+  'kyc.rejected': 'Verifikasi identitas ditolak',
+  'kyc.identity_revealed': 'Nomor identitas ditampilkan',
+  'kyc.document_viewed': 'Dokumen identitas dibuka',
+  'kyc.duplicate_blocked': 'Pengajuan verifikasi ditahan',
+  'auth.step_up_failed': 'Konfirmasi password gagal',
   'team.member_created': 'Anggota tim dibuat',
   'team.member_updated': 'Anggota tim diubah',
   'team.member_enabled': 'Anggota tim diaktifkan',
@@ -24,6 +31,14 @@ const LABELS: Record<string, string> = {
 const DETAILS: Record<string, Record<string, string>> = {
   'auth.sign_in': { password: 'Dengan password', google: 'Dengan Google' },
   'auth.sign_in_failed': { bad_credentials: 'Password salah', locked: 'Akun sedang terkunci sementara' },
+  'kyc.submitted': { individual: 'Perorangan', business: 'Badan usaha' },
+  'kyc.rejected': {
+    DOCUMENT_UNREADABLE: 'Dokumen tidak terbaca',
+    DATA_MISMATCH: 'Data tidak cocok',
+    FACE_MISMATCH: 'Wajah tidak cocok',
+    LIVENESS_FAILED: 'Verifikasi wajah gagal',
+    UNABLE_TO_VERIFY: 'Tidak dapat diverifikasi',
+  },
 }
 
 export const labelOf = (action: string) => LABELS[action] ?? 'Aktivitas lain'

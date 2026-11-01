@@ -11,7 +11,8 @@ import { SESSION_COOKIE } from './common/session-cookie'
 import type { Env } from './config/env'
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule)
+  // const app = await NestFactory.create<NestExpressApplication>(AppModule)
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true })
   const config = app.get<ConfigService<Env, true>>(ConfigService)
 
   app.set('trust proxy', config.get('TRUST_PROXY', { infer: true })) // correct client IPs behind a load balancer

@@ -106,3 +106,5 @@ export const resetPasswordSchema = z.object({ token, password })
 export const changePasswordSchema = z.object({ password })
 
 export const aliasQuerySchema = z.object({ alias: z.string().trim().toLowerCase().max(80) })
+
+export const stepUpSchema = z.object({ password: z.string().min(1).max(128) })

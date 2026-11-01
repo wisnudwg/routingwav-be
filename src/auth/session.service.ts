@@ -73,7 +73,7 @@ export class SessionService {
         .update({ where: { id: row.id }, data: { lastSeenAt: new Date(now) } })
         .catch(() => undefined)
     }
-    return makeContext(row.id, row.user)
+    return { ...makeContext(row.id, row.user), elevatedUntil: row.elevatedUntil }
   }
 
   async revokeByToken(raw: string) {

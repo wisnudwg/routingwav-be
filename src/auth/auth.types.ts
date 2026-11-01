@@ -12,6 +12,7 @@ export interface AuthContext {
   sessionId: string
   user: UserFull
   pending?: PendingStep
+  elevatedUntil?: Date | null
 }
 
 export function pendingOf(u: UserFull): PendingStep | undefined {

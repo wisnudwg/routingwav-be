@@ -8,6 +8,109 @@ datasource db {
   provider = "postgresql"
 }
 
+enum KycType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum KycStatus {
+  IN_REVIEW
+  VERIFIED
+  REJECTED
+  SUPERSEDED
+}
+
+enum KycDocKind {
+  KTP
+  SELFIE
+  NPWP
+  NIB
+  REP_KTP
+  DEED
+}
+
+enum KycDocStatus {
+  PENDING_UPLOAD
+  UPLOADED
+  REJECTED
+}
+
+model KycCase {
+  /// Generated in code: it is part of the encryption context
+  id          String    @id @db.Uuid
+  accountId   String    @db.Uuid
+  account     Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  type        KycType
+  status      KycStatus
+
+  // Not sensitive enough to encrypt: shown to the owner and used for contracts
+  fullName    String?
+  entityType  String?
+  legalName   String?
+  repName     String?
+
+  // Identity numbers: AES-256-GCM with a per-case key
+  dekWrapped  String
+  nikEnc      String?
+  npwpEnc     String?
+  nibEnc      String?
+  repNikEnc   String?
+  // Keyed hashes for duplicate detection (the numbers themselves can't be recovered from them without the key)
+  nikIdx      String?
+  npwpIdx     String?
+  nibIdx      String?
+  /// Display masks like "•••• •••• •••• 0001"
+  masked      Json
+
+  provider            String
+  externalRef         String?   @unique
+  providerStartedAt   DateTime? @db.Timestamptz(3)
+  userActionUrl       String?
+  userActionExpiresAt DateTime? @db.Timestamptz(3)
+  rejectionCode       String?
+
+  submittedAt DateTime  @default(now()) @db.Timestamptz(3)
+  decidedAt   DateTime? @db.Timestamptz(3)
+  /// Earliest date this case's data may be purged. Nothing is deleted automatically yet.
+  retainUntil DateTime? @db.Timestamptz(3)
+
+  documents KycDocument[]
+
+  @@index([accountId, submittedAt])
+  @@map("kyc_cases")
+}
+
+model KycDocument {
+  id           String       @id @db.Uuid
+  accountId    String       @db.Uuid
+  account      Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  caseId       String?      @db.Uuid
+  case         KycCase?     @relation(fields: [caseId], references: [id], onDelete: Restrict)
+  kind         KycDocKind
+  status       KycDocStatus @default(PENDING_UPLOAD)
+  /// Random: never derived from the user's file name
+  objectKey    String       @unique
+  originalName String
+  contentType  String
+  size         Int?
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  uploadedAt   DateTime?    @db.Timestamptz(3)
+
+  @@index([accountId, status])
+  @@index([caseId])
+  @@map("kyc_documents")
+}
+
+model KycProviderEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  provider   String
+  eventId    String
+  receivedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([provider, eventId])
+  @@map("kyc_provider_events")
+}
+
 enum UserType {
   ROOT
   IAM
@@ -41,6 +144,8 @@ model Account {
 
   users    User[]
   profiles Profile[]
+  kycCases     KycCase[]
+  kycDocuments KycDocument[]
 
   @@map("accounts")
 }
@@ -105,6 +210,7 @@ model Session {
   expiresAt  DateTime @db.Timestamptz(3)
   ip         String?
   userAgent  String?
+  elevatedUntil DateTime? @db.Timestamptz(3)
 
   @@index([userId])
   @@index([expiresAt])
